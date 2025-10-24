@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>SAHFA BOOKS - Files API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 12px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .token-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .files-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .file-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔐 1. LOGIN (Token Olish)</h2>
+        
+        <div class="form-group">
+            <label>Username:</label>
+            <input type="text" id="loginUsername" value="superadmin">
+        </div>
+        
+        <div class="form-group">
+            <label>Password:</label>
+            <input type="password" id="loginPassword" value="password">
+        </div>
+        
+        <button onclick="login()">LOGIN</button>
+        
+        <div id="tokenInfo" class="token-info" style="display:none;">
+            <strong>Token:</strong> <span id="tokenDisplay"></span>
+        </div>
+        
+        <div id="loginResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>📄 2. GET ALL FILES (Barcha Fayllar)</h2>
+        
+        <button onclick="getAllFiles()">Fayllarni Olish</button>
+        
+        <div id="filesResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>➕ 3. CREATE FILE (Yangi Fayl - Faqat Admin)</h2>
+        
+        <div class="form-group">
+            <label>Client ID:</label>
+            <input type="number" id="clientId" value="2" placeholder="Client ID (2, 5, 6)">
+        </div>
+        
+        <div class="form-group">
+            <label>Title:</label>
+            <input type="text" id="fileTitle" placeholder="Fayl nomi">
+        </div>
+        
+        <div class="form-group">
+            <label>Description:</label>
+            <textarea id="fileDescription" placeholder="Ta'rif"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Cash Price:</label>
+            <input type="number" id="cashPrice" placeholder="Naqd narx">
+        </div>
+        
+        <div class="form-group">
+            <label>Bank Price:</label>
+            <input type="number" id="bankPrice" placeholder="Bank narx">
+        </div>
+        
+        <div class="form-group">
+            <label>Stock:</label>
+            <input type="number" id="stock" value="10">
+        </div>
+        
+        <div class="form-group">
+            <label>Page Size:</label>
+            <select id="pageSize">
+                <option value="A4">A4</option>
+                <option value="A5">A5</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Color Type:</label>
+            <select id="colorType">
+                <option value="Color">Color</option>
+                <option value="B&W">B&W</option>
+            </select>
+        </div>
+        
+        <button onclick="createFile()">Fayl Yaratish</button>
+        
+        <div id="createResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>✏️ 4. UPDATE FILE (Faylni Yangilash - Admin)</h2>
+        
+        <div class="form-group">
+            <label>File ID:</label>
+            <input type="number" id="updateFileId" placeholder="Yangilanadigan fayl ID">
+        </div>
+        
+        <div class="form-group">
+            <label>Yangi Title:</label>
+            <input type="text" id="updateTitle" placeholder="Yangi nom">
+        </div>
+        
+        <div class="form-group">
+            <label>Yangi Cash Price:</label>
+            <input type="number" id="updateCashPrice" placeholder="Yangi narx">
+        </div>
+        
+        <button onclick="updateFile()">Yangilash</button>
+        
+        <div id="updateResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>🗑️ 5. DELETE FILE (Faylni O'chirish - Admin)</h2>
+        
+        <div class="form-group">
+            <label>File ID:</label>
+            <input type="number" id="deleteFileId" placeholder="O'chiriladigan fayl ID">
+        </div>
+        
+        <button onclick="deleteFile()">O'chirish</button>
+        
+        <div id="deleteResponse" class="response"></div>
+    </div>
+
+    <script>
+        let token = '';
+
+        async function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const responseDiv = document.getElementById('loginResponse');
+
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    token = data.token;
+                    document.getElementById('tokenInfo').style.display = 'block';
+                    document.getElementById('tokenDisplay').textContent = token.substring(0, 50) + '...';
+                    
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Login Muvaffaqiyatli!</h3>
+                        <pre>${JSON.stringify(data.user, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function getAllFiles() {
+            const responseDiv = document.getElementById('filesResponse');
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:5000/api/files', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Fayllar (${data.files.length} ta):</h3>
+                        <pre>${JSON.stringify(data.files, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function createFile() {
+            const responseDiv = document.getElementById('createResponse');
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            const fileData = {
+                client_id: parseInt(document.getElementById('clientId').value),
+                title: document.getElementById('fileTitle').value,
+                description: document.getElementById('fileDescription').value,
+                cash_price: parseFloat(document.getElementById('cashPrice').value),
+                bank_price: parseFloat(document.getElementById('bankPrice').value),
+                stock: parseInt(document.getElementById('stock').value),
+                page_size: document.getElementById('pageSize').value,
+                color_type: document.getElementById('colorType').value,
+                file_format: 'PDF',
+                show_price: true
+            };
+
+            try {
+                const response = await fetch('http://localhost:5000/api/files', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(fileData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Fayl Yaratildi!</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function updateFile() {
+            const responseDiv = document.getElementById('updateResponse');
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            const fileId = document.getElementById('updateFileId').value;
+            const updateData = {
+                title: document.getElementById('updateTitle').value,
+                cash_price: parseFloat(document.getElementById('updateCashPrice').value)
+            };
+
+            try {
+                const response = await fetch(`http://localhost:5000/api/files/${fileId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Fayl Yangilandi!</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function deleteFile() {
+            const responseDiv = document.getElementById('deleteResponse');
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            const fileId = document.getElementById('deleteFileId').value;
+
+            if (!confirm('Rostdan ham o\'chirmoqchimisiz?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:5000/api/files/${fileId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Fayl O'chirildi!</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
+```
+
+**Ctrl+S** qiling! ✅
+
+---
+
+## **🧪 TEST QILING:**
+
+Browser'da oching:
+```
+http://localhost:5000/test-files.html

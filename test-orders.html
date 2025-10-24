@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>SAHFA BOOKS - Orders API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #FF9800;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 12px 20px;
+            background: #FF9800;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #e68900;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .token-info {
+            background: #fff3e0;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .item-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .item-row input {
+            flex: 1;
+        }
+        .add-item-btn {
+            background: #4CAF50;
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔐 1. LOGIN (Token Olish)</h2>
+        
+        <div class="form-group">
+            <label>Username:</label>
+            <input type="text" id="loginUsername" value="superadmin">
+        </div>
+        
+        <div class="form-group">
+            <label>Password:</label>
+            <input type="password" id="loginPassword" value="password">
+        </div>
+        
+        <button onclick="login()">LOGIN</button>
+        
+        <div id="tokenInfo" class="token-info" style="display:none;">
+            <strong>Token:</strong> <span id="tokenDisplay"></span><br>
+            <strong>User:</strong> <span id="userDisplay"></span>
+        </div>
+        
+        <div id="loginResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>🛒 2. GET ALL ORDERS (Barcha Buyurtmalar)</h2>
+        
+        <button onclick="getAllOrders()">Buyurtmalarni Olish</button>
+        
+        <div id="ordersResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>🔍 3. GET ORDER BY ID (Buyurtma Detallari)</h2>
+        
+        <div class="form-group">
+            <label>Order ID:</label>
+            <input type="number" id="getOrderId" placeholder="Buyurtma ID">
+        </div>
+        
+        <button onclick="getOrderById()">Buyurtmani Olish</button>
+        
+        <div id="getOrderResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>➕ 4. CREATE ORDER (Yangi Buyurtma)</h2>
+        
+        <div id="orderItems">
+            <label>Buyurtma Itemlari:</label>
+            <div class="item-row">
+                <input type="number" placeholder="File ID" class="item-file-id">
+                <input type="number" placeholder="Miqdor" value="1" class="item-quantity">
+            </div>
+        </div>
+        
+        <button class="add-item-btn" onclick="addOrderItem()">+ Item Qo'shish</button>
+        
+        <div class="form-group">
+            <label>Yetkazib Berish Manzili:</label>
+            <textarea id="deliveryAddress" placeholder="Manzil" rows="2"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Izohlar:</label>
+            <textarea id="orderNotes" placeholder="Qo'shimcha izohlar" rows="2"></textarea>
+        </div>
+        
+        <button onclick="createOrder()">Buyurtma Berish</button>
+        
+        <div id="createOrderResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>✏️ 5. UPDATE ORDER (Buyurtma Statusini Yangilash - Admin)</h2>
+        
+        <div class="form-group">
+            <label>Order ID:</label>
+            <input type="number" id="updateOrderId" placeholder="Buyurtma ID">
+        </div>
+        
+        <div class="form-group">
+            <label>Status:</label>
+            <select id="updateStatus">
+                <option value="">Tanlang...</option>
+                <option value="To Confirm">To Confirm</option>
+                <option value="Confirmed">Confirmed</option>
+                <option value="In Production">In Production</option>
+                <option value="Ready">Ready</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>To'lov Status:</label>
+            <select id="updatePaymentStatus">
+                <option value="">Tanlang...</option>
+                <option value="Pending">Pending</option>
+                <option value="Cash Paid">Cash Paid</option>
+                <option value="Bank Paid">Bank Paid</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Yetkazib Berish Sanasi:</label>
+            <input type="date" id="updateDeliveryDate">
+        </div>
+        
+        <button onclick="updateOrder()">Yangilash</button>
+        
+        <div id="updateOrderResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>🗑️ 6. DELETE ORDER (Buyurtmani O'chirish - Admin)</h2>
+        
+        <div class="form-group">
+            <label>Order ID:</label>
+            <input type="number" id="deleteOrderId" placeholder="O'chiriladigan buyurtma ID">
+        </div>
+        
+        <button onclick="deleteOrder()">O'chirish</button>
+        
+        <div id="deleteOrderResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>📊 7. ORDER STATISTICS (Statistika - Admin)</h2>
+        
+        <button onclick="getOrderStats()">Statistika Olish</button>
+        
+        <div id="statsResponse" class="response"></div>
+    </div>
+
+    <script>
+        let token = '';
+        let currentUser = null;
+
+        async function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const responseDiv = document.getElementById('loginResponse');
+
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    token = data.token;
+                    currentUser = data.user;
+                    document.getElementById('tokenInfo').style.display = 'block';
+                    document.getElementById('tokenDisplay').textContent = token.substring(0, 50) + '...';
+                    document.getElementById('userDisplay').textContent = `${data.user.username} (${data.user.role})`;
+                    
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Login Muvaffaqiyatli!</h3>
+                        <pre>${JSON.stringify(data.user, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function getAllOrders() {
+            const responseDiv = document.getElementById('ordersResponse');
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:5000/api/orders', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Buyurtmalar (${data.orders.length} ta):</h3>
+                        <pre>${JSON.stringify(data.orders, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function getOrderById() {
+            const responseDiv = document.getElementById('getOrderResponse');
+            const orderId = document.getElementById('getOrderId').value;
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Buyurtma Detallari:</h3>
+                        <pre>${JSON.stringify(data.order, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        function addOrderItem() {
+            const container = document.getElementById('orderItems');
+            const newRow = document.createElement('div');
+            newRow.className = 'item-row';
+            newRow.innerHTML = `
+                <input type="number" placeholder="File ID" class="item-file-id">
+                <input type="number" placeholder="Miqdor" value="1" class="item-quantity">
+            `;
+            container.appendChild(newRow);
+        }
+
+        async function createOrder() {
+            const responseDiv = document.getElementById('createOrderResponse');
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            // Items yig'ish
+            const fileIds = document.querySelectorAll('.item-file-id');
+            const quantities = document.querySelectorAll('.item-quantity');
+            
+            const items = [];
+            for (let i = 0; i < fileIds.length; i++) {
+                const fileId = parseInt(fileIds[i].value);
+                const quantity = parseInt(quantities[i].value);
+                
+                if (fileId && quantity) {
+                    items.push({ file_id: fileId, quantity: quantity });
+                }
+            }
+
+            if (items.length === 0) {
+                alert('Kamida bitta item qo\'shing!');
+                return;
+            }
+
+            const orderData = {
+                items: items,
+                delivery_address: document.getElementById('deliveryAddress').value,
+                notes: document.getElementById('orderNotes').value
+            };
+
+            try {
+                const response = await fetch('http://localhost:5000/api/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(orderData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Buyurtma Yaratildi!</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function updateOrder() {
+            const responseDiv = document.getElementById('updateOrderResponse');
+            const orderId = document.getElementById('updateOrderId').value;
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            const updateData = {
+                status: document.getElementById('updateStatus').value || undefined,
+                payment_status: document.getElementById('updatePaymentStatus').value || undefined,
+                delivery_date: document.getElementById('updateDeliveryDate').value || undefined
+            };
+
+            try {
+                const response = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Buyurtma Yangilandi!</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function deleteOrder() {
+            const responseDiv = document.getElementById('deleteOrderResponse');
+            const orderId = document.getElementById('deleteOrderId').value;
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            if (!confirm('Rostdan ham o\'chirmoqchimisiz?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Buyurtma O'chirildi!</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function getOrderStats() {
+            const responseDiv = document.getElementById('statsResponse');
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:5000/api/orders/stats/summary', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Statistika:</h3>
+                        <pre>${JSON.stringify(data.stats, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

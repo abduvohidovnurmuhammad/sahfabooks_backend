@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>SAHFA BOOKS - Users API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #2196F3;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 12px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #0b7dda;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .token-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔐 1. LOGIN (Token Olish)</h2>
+        
+        <div class="form-group">
+            <label>Username:</label>
+            <input type="text" id="loginUsername" value="superadmin">
+        </div>
+        
+        <div class="form-group">
+            <label>Password:</label>
+            <input type="password" id="loginPassword" value="password">
+        </div>
+        
+        <button onclick="login()">LOGIN</button>
+        
+        <div id="tokenInfo" class="token-info" style="display:none;">
+            <strong>Token:</strong> <span id="tokenDisplay"></span>
+        </div>
+        
+        <div id="loginResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>👥 2. GET ALL USERS (Barcha Foydalanuvchilar - Admin)</h2>
+        
+        <button onclick="getAllUsers()">Foydalanuvchilarni Olish</button>
+        
+        <div id="usersResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>🔍 3. GET USER BY ID (Bitta Foydalanuvchi)</h2>
+        
+        <div class="form-group">
+            <label>User ID:</label>
+            <input type="number" id="getUserId" value="9" placeholder="User ID">
+        </div>
+        
+        <button onclick="getUserById()">Foydalanuvchini Olish</button>
+        
+        <div id="getUserResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>✏️ 4. UPDATE USER (Foydalanuvchini Yangilash)</h2>
+        
+        <div class="form-group">
+            <label>User ID:</label>
+            <input type="number" id="updateUserId" value="9" placeholder="User ID">
+        </div>
+        
+        <div class="form-group">
+            <label>Yangi Full Name:</label>
+            <input type="text" id="updateFullName" placeholder="Yangi to'liq ism">
+        </div>
+        
+        <div class="form-group">
+            <label>Yangi Email:</label>
+            <input type="email" id="updateEmail" placeholder="Yangi email">
+        </div>
+        
+        <div class="form-group">
+            <label>Yangi Phone:</label>
+            <input type="text" id="updatePhone" placeholder="Yangi telefon">
+        </div>
+        
+        <button onclick="updateUser()">Yangilash</button>
+        
+        <div id="updateResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>🗑️ 5. DELETE USER (Foydalanuvchini O'chirish - Admin)</h2>
+        
+        <div class="form-group">
+            <label>User ID:</label>
+            <input type="number" id="deleteUserId" placeholder="O'chiriladigan user ID">
+        </div>
+        
+        <button onclick="deleteUser()">O'chirish</button>
+        
+        <div id="deleteResponse" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>📊 6. USER STATISTICS (Statistika - Admin)</h2>
+        
+        <button onclick="getUserStats()">Statistika Olish</button>
+        
+        <div id="statsResponse" class="response"></div>
+    </div>
+
+    <script>
+        let token = '';
+
+        async function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const responseDiv = document.getElementById('loginResponse');
+
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    token = data.token;
+                    document.getElementById('tokenInfo').style.display = 'block';
+                    document.getElementById('tokenDisplay').textContent = token.substring(0, 50) + '...';
+                    
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Login Muvaffaqiyatli!</h3>
+                        <pre>${JSON.stringify(data.user, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function getAllUsers() {
+            const responseDiv = document.getElementById('usersResponse');
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:5000/api/users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Foydalanuvchilar (${data.users.length} ta):</h3>
+                        <pre>${JSON.stringify(data.users, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function getUserById() {
+            const responseDiv = document.getElementById('getUserResponse');
+            const userId = document.getElementById('getUserId').value;
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Foydalanuvchi:</h3>
+                        <pre>${JSON.stringify(data.user, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function updateUser() {
+            const responseDiv = document.getElementById('updateResponse');
+            const userId = document.getElementById('updateUserId').value;
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            const updateData = {
+                full_name: document.getElementById('updateFullName').value,
+                email: document.getElementById('updateEmail').value,
+                phone: document.getElementById('updatePhone').value
+            };
+
+            try {
+                const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Foydalanuvchi Yangilandi!</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function deleteUser() {
+            const responseDiv = document.getElementById('deleteResponse');
+            const userId = document.getElementById('deleteUserId').value;
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            if (!confirm('Rostdan ham o\'chirmoqchimisiz?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Foydalanuvchi O'chirildi!</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+
+        async function getUserStats() {
+            const responseDiv = document.getElementById('statsResponse');
+
+            if (!token) {
+                alert('Avval login qiling!');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:5000/api/users/stats/summary', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `
+                        <h3>✅ Statistika:</h3>
+                        <pre>${JSON.stringify(data.stats, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.style.display = 'block';
+                    responseDiv.innerHTML = `<h3>❌ Xatolik</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<h3>❌ Server Xatolik</h3><p>${err.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
