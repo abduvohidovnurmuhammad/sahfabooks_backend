@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: 'http://45.93.138.91',
+  origin: 'http://sahfaprint.uz',
   credentials: true
 }));
 app.use(express.json());
