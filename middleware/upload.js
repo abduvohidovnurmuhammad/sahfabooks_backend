@@ -1,4 +1,3 @@
-
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -9,74 +8,34 @@ const coversDir = 'uploads/covers/';
 const contentsDir = 'uploads/contents/';
 
 // Papkalar mavjud emasligini tekshirish
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
-}
-if (!fs.existsSync(coversDir)) {
-  fs.mkdirSync(coversDir);
-}
-if (!fs.existsSync(contentsDir)) {
-  fs.mkdirSync(contentsDir);
-}
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+if (!fs.existsSync(coversDir)) fs.mkdirSync(coversDir);
+if (!fs.existsSync(contentsDir)) fs.mkdirSync(contentsDir);
 
 // Storage sozlamalari - Har bir fayl turi uchun alohida
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Fieldname'ga qarab papka tanlash
     if (file.fieldname === 'cover_file') {
       cb(null, coversDir);
     } else if (file.fieldname === 'content_file') {
       cb(null, contentsDir);
     } else {
-      cb(null, uploadsDir); // Default
+      cb(null, uploadsDir);
     }
   },
   filename: function (req, file, cb) {
-    // Unique fayl nomi yaratish
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const sanitizedFilename = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
     cb(null, file.fieldname + '-' + uniqueSuffix + '-' + sanitizedFilename);
   }
 });
 
-// Fayl filtri - rasm va hujjat formatlari
+// Fayl filtrini olib tashladik — istalgan fayl yuklanadi
 const fileFilter = (req, file, cb) => {
-  // Cover file uchun - faqat rasmlar
-  if (file.fieldname === 'cover_file') {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-
-    if (extname && mimetype) {
-      return cb(null, true);
-    } else {
-      return cb(new Error('Muqova uchun faqat rasm fayllar (JPG, PNG, GIF, WEBP) qabul qilinadi!'));
-    }
+  if (!file.originalname) {
+    return cb(new Error('Fayl tanlanmadi!'));
   }
-  
-  // Content file uchun - hujjat va rasm formatlari
-  if (file.fieldname === 'content_file') {
-    const allowedTypes = /pdf|doc|docx|jpg|jpeg|png/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-
-    if (extname && mimetype) {
-      return cb(null, true);
-    } else {
-      return cb(new Error('Tarkib uchun faqat PDF, DOC, DOCX, JPG, PNG fayllar qabul qilinadi!'));
-    }
-  }
-
-  // Eski 'file' field uchun - barcha formatlar
-  const allowedTypes = /pdf|doc|docx|jpg|jpeg|png|gif|webp/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
-
-  if (extname && mimetype) {
-    return cb(null, true);
-  } else {
-    cb(new Error('Faqat PDF, DOC, DOCX, JPG, PNG fayllar qabul qilinadi!'));
-  }
+  cb(null, true); // cheklov yo‘q
 };
 
 // Multer sozlamalari
