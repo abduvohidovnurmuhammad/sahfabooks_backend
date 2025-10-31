@@ -1,8 +1,10 @@
 const express = require('express');
 const db = require('../database');
 const { authenticateToken, isAdmin } = require('../middleware/auth');
-const upload = require('../middleware/upload'); // ← SHU QATORNI QO'SHING!
+const upload = require('../middleware/upload');
 const router = express.Router();
+const path = require('path');
+const fs = require('fs');
 
 // GET /api/files - Barcha fayllar (authentication kerak)
 router.get('/', authenticateToken, async (req, res) => {
@@ -71,18 +73,18 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/files - Yangi fayl yaratish va file yuklash (Faqat admin)
-router.post('/', authenticateToken, isAdmin, upload.single('file'), async (req, res) => {
+// POST /api/files - Yangi fayl yaratish (Faqat admin - eski usul)
+router.post('/', authenticateToken, isAdmin, upload.uploadSingle, async (req, res) => {
   try {
-    console.log('=== YANGI FAYL YARATISH ===');
+    console.log('=== YANGI FAYL YARATISH (ADMIN) ===');
     
-    const { 
-      client_id, 
-      title, 
-      description, 
-      cash_price, 
-      bank_price, 
-      show_price, 
+    const {
+      client_id,
+      title,
+      description,
+      cash_price,
+      bank_price,
+      show_price,
       stock,
       page_size,
       color_type,
@@ -90,180 +92,72 @@ router.post('/', authenticateToken, isAdmin, upload.single('file'), async (req, 
       admin_notes
     } = req.body;
 
-    if (!client_id || !title) {
-      return res.status(400).json({ error: 'client_id va title majburiy!' });
+    if (!title || !client_id) {
+      return res.status(400).json({ error: 'Sarlavha va mijoz majburiy!' });
     }
-// Yuklangan faylning yo'li
-const file_path = req.file ? req.file.path : null;
 
-const result = await db.query(
-  `INSERT INTO files (client_id, title, description, file_path, cash_price, bank_price, show_price, stock, page_size, color_type, file_format, admin_notes) 
-   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
-   RETURNING *`,
-  [client_id, title, description, file_path, cash_price, bank_price, show_price || false, stock || 0, page_size, color_type, file_format, admin_notes]
-);
+    const file_path = req.file ? req.file.path : null;
 
-    console.log('Yangi fayl yaratildi:', result.rows[0].id);
+    const result = await db.query(
+      `INSERT INTO files (
+        client_id,
+        title,
+        description,
+        file_path,
+        cash_price,
+        bank_price,
+        show_price,
+        stock,
+        page_size,
+        color_type,
+        file_format,
+        uploaded_by,
+        admin_notes,
+        status
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING *`,
+      [
+        client_id,
+        title,
+        description,
+        file_path,
+        cash_price || 0,
+        bank_price || 0,
+        show_price || false,
+        stock || 0,
+        page_size,
+        color_type,
+        file_format,
+        'admin',
+        admin_notes,
+        'approved'
+      ]
+    );
+
+    console.log('Admin fayl yaratildi:', result.rows[0].id);
 
     res.status(201).json({
       success: true,
-      message: 'Fayl muvaffaqiyatli yaratildi!',
       file: result.rows[0]
     });
 
   } catch (err) {
-    console.error('Fayl yaratish xatolik:', err);
+    console.error('File yaratish xatolik:', err);
     res.status(500).json({ error: 'Server xatolik' });
   }
 });
 
-// PUT /api/files/:id - Faylni yangilash (Faqat admin)
-router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
+// POST /api/files/client-upload - Mijoz ikkita fayl yuklash (YANGI!)
+router.post('/client-upload', authenticateToken, upload.uploadClientFiles, async (req, res) => {
   try {
-    const { id } = req.params;
-    const { 
-      title, 
-      description, 
-      cash_price, 
-      bank_price, 
-      show_price, 
-      stock,
-      page_size,
-      color_type,
-      admin_notes
-    } = req.body;
-
-    const result = await db.query(
-      `UPDATE files 
-       SET title = COALESCE($1, title),
-           description = COALESCE($2, description),
-           cash_price = COALESCE($3, cash_price),
-           bank_price = COALESCE($4, bank_price),
-           show_price = COALESCE($5, show_price),
-           stock = COALESCE($6, stock),
-           page_size = COALESCE($7, page_size),
-           color_type = COALESCE($8, color_type),
-           admin_notes = COALESCE($9, admin_notes)
-       WHERE id = $10
-       RETURNING *`,
-      [title, description, cash_price, bank_price, show_price, stock, page_size, color_type, admin_notes, id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Fayl topilmadi' });
-    }
-
-    console.log('Fayl yangilandi:', id);
-
-    res.json({
-      success: true,
-      message: 'Fayl muvaffaqiyatli yangilandi!',
-      file: result.rows[0]
-    });
-
-  } catch (err) {
-    console.error('Fayl yangilash xatolik:', err);
-    res.status(500).json({ error: 'Server xatolik' });
-  }
-});
-
-// DELETE /api/files/:id - Faylni o'chirish (Faqat admin)
-router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const result = await db.query('DELETE FROM files WHERE id = $1 RETURNING *', [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Fayl topilmadi' });
-    }
-
-    console.log('Fayl o\'chirildi:', id);
-
-    res.json({
-      success: true,
-      message: 'Fayl muvaffaqiyatli o\'chirildi!'
-    });
-
-  } catch (err) {
-    console.error('Fayl o\'chirish xatolik:', err);
-    res.status(500).json({ error: 'Server xatolik' });
-  }
-});
-// GET /api/files/:id/download - Faylni yuklab olish
-// GET /api/files/:id/download - Faylni yuklab olish
-router.get('/:id/download', authenticateToken, async (req, res) => {
-  try {
-    const fileId = req.params.id;
-    console.log('=== DOWNLOAD REQUEST ===');
-    console.log('File ID:', fileId);
-    console.log('User:', req.user);
-    
-    // Faylni database'dan topish
-    const result = await db.query(
-      'SELECT * FROM files WHERE id = $1',
-      [fileId]
-    );
-    
-    if (result.rows.length === 0) {
-      console.log('Fayl topilmadi!');
-      return res.status(404).json({ error: 'Fayl topilmadi!' });
-    }
-    
-    const file = result.rows[0];
-    console.log('Fayl topildi:', file.title);
-    console.log('File path:', file.file_path);
-    
-    // Agar client bo'lsa, faqat o'z fayllarini yuklab olishi mumkin
-if (req.user.role === 'client' && file.client_id !== req.user.id) {
-  console.log('Ruxsat yo\'q! Client ID:', file.client_id, 'User ID:', req.user.id);
-  return res.status(403).json({ error: 'Ruxsat yo\'q!' });
-}
-    
-    // Fayl yo'lini tekshirish
-    if (!file.file_path) {
-      console.log('File path mavjud emas!');
-      return res.status(404).json({ error: 'Fayl yo\'li topilmadi!' });
-    }
-    
-    const path = require('path');
-    const fs = require('fs');
-    const filePath = path.join(__dirname, '..', file.file_path);
-    
-    console.log('Full file path:', filePath);
-    
-    // Fayl mavjudligini tekshirish
-    if (!fs.existsSync(filePath)) {
-      console.log('Fayl disk\'da topilmadi!');
-      return res.status(404).json({ error: 'Fayl disk\'da topilmadi!' });
-    }
-    
-    console.log('Fayl yuborilmoqda...');
-    
-    // Faylni yuborish
-    res.download(filePath, file.title + path.extname(file.file_path), (err) => {
-      if (err) {
-        console.error('Download xatolik:', err);
-        res.status(500).json({ error: 'Download xatolik' });
-      } else {
-        console.log('Download muvaffaqiyatli!');
-      }
-    });
-    
-  } catch (err) {
-    console.error('Fayl yuklab olish xatolik:', err);
-    res.status(500).json({ error: 'Server xatolik' });
-  }
-});
-// POST /api/files/client-upload - Mijoz fayl yuklash
-router.post('/client-upload', authenticateToken, upload.single('file'), async (req, res) => {
-  try {
-    console.log('=== CLIENT FILE UPLOAD ===');
+    console.log('=== CLIENT DUAL FILE UPLOAD ===');
     console.log('User:', req.user.username, 'Role:', req.user.role);
+    console.log('Files received:', req.files);
     
-    const { 
-      title, 
-      description, 
+    const {
+      title,
+      description,
       quantity,
       page_size,
       color_type,
@@ -274,35 +168,45 @@ router.post('/client-upload', authenticateToken, upload.single('file'), async (r
       return res.status(400).json({ error: 'Sarlavha majburiy!' });
     }
 
-    const file_path = req.file ? req.file.path : null;
+    // Fayllarni tekshirish
+    const cover_file_path = req.files && req.files['cover_file'] ? req.files['cover_file'][0].path : null;
+    const content_file_path = req.files && req.files['content_file'] ? req.files['content_file'][0].path : null;
 
-    if (!file_path) {
-      return res.status(400).json({ error: 'Fayl yuklanmadi!' });
+    if (!cover_file_path || !content_file_path) {
+      return res.status(400).json({ 
+        error: 'Ikkala fayl ham (muqova va tarkib) yuklash majburiy!' 
+      });
     }
 
+    console.log('Cover file:', cover_file_path);
+    console.log('Content file:', content_file_path);
+
+    // Database'ga saqlash
     const result = await db.query(
       `INSERT INTO files (
-        client_id, 
-        title, 
-        description, 
-        file_path, 
-        page_size, 
-        color_type, 
-        file_format, 
+        client_id,
+        title,
+        description,
+        cover_file_path,
+        content_file_path,
+        page_size,
+        color_type,
+        file_format,
         stock,
         uploaded_by,
         status,
         show_price
-      ) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *`,
       [
         req.user.id,
-        title, 
-        description, 
-        file_path, 
-        page_size, 
-        color_type, 
+        title,
+        description,
+        cover_file_path,
+        content_file_path,
+        page_size,
+        color_type,
         file_format,
         quantity || 0,
         'client',
@@ -311,19 +215,106 @@ router.post('/client-upload', authenticateToken, upload.single('file'), async (r
       ]
     );
 
-    console.log('Mijoz fayl yuklandi:', result.rows[0].id);
+    console.log('Mijoz ikkita fayl yuklandi:', result.rows[0].id);
 
     res.status(201).json({
       success: true,
-      message: 'Fayl muvaffaqiyatli yuklandi! Admin narx belgilaydi.',
+      message: 'Fayllar muvaffaqiyatli yuklandi! Admin narx belgilaydi.',
       file: result.rows[0]
     });
 
   } catch (err) {
-    console.error('Client file upload xatolik:', err);
+    console.error('Client dual file upload xatolik:', err);
+    
+    // Xatolik bo'lsa, yuklangan fayllarni o'chirish
+    if (req.files) {
+      if (req.files['cover_file']) {
+        fs.unlinkSync(req.files['cover_file'][0].path);
+      }
+      if (req.files['content_file']) {
+        fs.unlinkSync(req.files['content_file'][0].path);
+      }
+    }
+    
+    res.status(500).json({ error: 'Server xatolik: ' + err.message });
+  }
+});
+
+// GET /api/files/:id/download/:fileType - Fayl yuklab olish (cover yoki content)
+router.get('/:id/download/:fileType', authenticateToken, async (req, res) => {
+  try {
+    const { id, fileType } = req.params;
+    
+    console.log('=== DOWNLOAD FILE ===');
+    console.log('File ID:', id);
+    console.log('File Type:', fileType);
+    console.log('User:', req.user.username);
+    
+    // fileType tekshirish
+    if (fileType !== 'cover' && fileType !== 'content') {
+      return res.status(400).json({ error: 'Noto\'g\'ri fayl turi! (cover yoki content bo\'lishi kerak)' });
+    }
+    
+    // Faylni database'dan topish
+    let query = 'SELECT * FROM files WHERE id = $1';
+    let params = [id];
+    
+    // Client faqat o'z faylini ko'rishi mumkin
+    if (req.user.role === 'client') {
+      query += ' AND client_id = $2';
+      params.push(req.user.id);
+    }
+    
+    const result = await db.query(query, params);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Fayl topilmadi yoki sizga ruxsat yo\'q!' });
+    }
+    
+    const file = result.rows[0];
+    
+    // Fayl yo'lini aniqlash
+    const filePath = fileType === 'cover' ? file.cover_file_path : file.content_file_path;
+    
+    if (!filePath) {
+      console.log(`${fileType} fayl yo'li mavjud emas!`);
+      return res.status(404).json({ error: `${fileType === 'cover' ? 'Muqova' : 'Tarkib'} fayli topilmadi!` });
+    }
+    
+    const fullFilePath = path.join(__dirname, '..', filePath);
+    
+    console.log('Full file path:', fullFilePath);
+    
+    // Fayl mavjudligini tekshirish
+    if (!fs.existsSync(fullFilePath)) {
+      console.log('Fayl disk\'da topilmadi!');
+      return res.status(404).json({ error: 'Fayl disk\'da topilmadi!' });
+    }
+    
+    console.log('Fayl yuborilmoqda...');
+    
+    // Fayl nomini yaratish
+    const fileExtension = path.extname(filePath);
+    const downloadName = `${file.title}_${fileType}${fileExtension}`;
+    
+    // Faylni yuborish
+    res.download(fullFilePath, downloadName, (err) => {
+      if (err) {
+        console.error('Download xatolik:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Download xatolik' });
+        }
+      } else {
+        console.log('Download muvaffaqiyatli!');
+      }
+    });
+    
+  } catch (err) {
+    console.error('Fayl yuklab olish xatolik:', err);
     res.status(500).json({ error: 'Server xatolik' });
   }
 });
+
 // PUT /api/files/:id/approve - Faylni tasdiqlash va narx qo'yish
 router.put('/:id/approve', authenticateToken, isAdmin, async (req, res) => {
   try {
@@ -341,12 +332,12 @@ router.put('/:id/approve', authenticateToken, isAdmin, async (req, res) => {
     
     // Database'da yangilash
     const result = await db.query(
-      `UPDATE files 
-       SET cash_price = $1, 
-           bank_price = $2, 
-           status = 'approved', 
-           show_price = true 
-       WHERE id = $3 
+      `UPDATE files
+       SET cash_price = $1,
+           bank_price = $2,
+           status = 'approved',
+           show_price = true
+       WHERE id = $3
        RETURNING *`,
       [cash_price, bank_price, fileId]
     );
@@ -379,9 +370,9 @@ router.put('/:id/reject', authenticateToken, isAdmin, async (req, res) => {
     
     // Database'da yangilash
     const result = await db.query(
-      `UPDATE files 
-       SET status = 'rejected' 
-       WHERE id = $1 
+      `UPDATE files
+       SET status = 'rejected'
+       WHERE id = $1
        RETURNING *`,
       [fileId]
     );
@@ -401,6 +392,98 @@ router.put('/:id/reject', authenticateToken, isAdmin, async (req, res) => {
   } catch (err) {
     console.error('Reject xatolik:', err);
     res.status(500).json({ error: 'Server xatolik' });
+  }
+});
+
+// DELETE /api/files/:id - Faylni o'chirish
+router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const fileId = req.params.id;
+    
+    console.log('=== DELETE FILE ===');
+    console.log('File ID:', fileId);
+    
+    // Avval faylni topish
+    const fileResult = await db.query('SELECT * FROM files WHERE id = $1', [fileId]);
+    
+    if (fileResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Fayl topilmadi!' });
+    }
+    
+    const file = fileResult.rows[0];
+    
+    // Fayllarni diskdan o'chirish
+    if (file.cover_file_path && fs.existsSync(path.join(__dirname, '..', file.cover_file_path))) {
+      fs.unlinkSync(path.join(__dirname, '..', file.cover_file_path));
+      console.log('Cover file o\'chirildi:', file.cover_file_path);
+    }
+    
+    if (file.content_file_path && fs.existsSync(path.join(__dirname, '..', file.content_file_path))) {
+      fs.unlinkSync(path.join(__dirname, '..', file.content_file_path));
+      console.log('Content file o\'chirildi:', file.content_file_path);
+    }
+    
+    // Eski file_path ham bo'lishi mumkin
+    if (file.file_path && fs.existsSync(path.join(__dirname, '..', file.file_path))) {
+      fs.unlinkSync(path.join(__dirname, '..', file.file_path));
+      console.log('Old file o\'chirildi:', file.file_path);
+    }
+    
+    // Database'dan o'chirish
+    await db.query('DELETE FROM files WHERE id = $1', [fileId]);
+    
+    console.log('Fayl database\'dan o\'chirildi');
+    
+    res.json({
+      success: true,
+      message: 'Fayl muvaffaqiyatli o\'chirildi!'
+    });
+    
+  } catch (err) {
+    console.error('Delete xatolik:', err);
+    res.status(500).json({ error: 'Server xatolik' });
+  }
+});
+// YANGI - Ikkita fayl yuklash (muqova + content)
+
+
+// YANGI - Cover yoki Content yuklab olish
+router.get('/:id/download/:fileType', authenticateToken, async (req, res) => {
+  try {
+    const { id, fileType } = req.params;
+    
+    let query = 'SELECT * FROM files WHERE id = $1';
+    if (req.user.role === 'client') {
+      query += ' AND client_id = $2';
+    }
+    
+    const params = req.user.role === 'client' ? [id, req.user.id] : [id];
+    const result = await db.query(query, params);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Fayl topilmadi' });
+    }
+    
+    const file = result.rows[0];
+    const filePath = fileType === 'cover' ? file.cover_file_path : file.content_file_path;
+    
+    if (!filePath) {
+      return res.status(404).json({ error: 'Fayl yo\'li topilmadi' });
+    }
+    
+    const path = require('path');
+    const fs = require('fs');
+    const fullPath = path.join(__dirname, '..', filePath);
+    
+    if (!fs.existsSync(fullPath)) {
+      return res.status(404).json({ error: 'Fayl diskda topilmadi' });
+    }
+    
+    res.download(fullPath);
+    
+  } catch (err) {
+    console.error('Download xatolik:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
