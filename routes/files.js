@@ -395,13 +395,14 @@ router.put('/:id/reject', authenticateToken, isAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/files/:id - Faylni o'chirish
-router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
+// DELETE /api/files/:id - Faylni o'chirish (Client o'z faylini, Admin barchasini)
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const fileId = req.params.id;
     
     console.log('=== DELETE FILE ===');
     console.log('File ID:', fileId);
+    console.log('User:', req.user.username, 'Role:', req.user.role);
     
     // Avval faylni topish
     const fileResult = await db.query('SELECT * FROM files WHERE id = $1', [fileId]);
@@ -411,6 +412,16 @@ router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
     }
     
     const file = fileResult.rows[0];
+    
+    // ✅ RUXSAT TEKSHIRISH:
+    // Client faqat o'z faylini o'chirishi mumkin
+    // Admin barcha faylni o'chirishi mumkin
+    if (req.user.role === 'client' && file.client_id !== req.user.id) {
+      console.log('RUXSAT YO\'Q! File client_id:', file.client_id, 'User id:', req.user.id);
+      return res.status(403).json({ error: 'Bu faylni o\'chirishga ruxsatingiz yo\'q!' });
+    }
+    
+    console.log('Ruxsat berildi, faylni o\'chirish...');
     
     // Fayllarni diskdan o'chirish
     if (file.cover_file_path && fs.existsSync(path.join(__dirname, '..', file.cover_file_path))) {
@@ -432,7 +443,7 @@ router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
     // Database'dan o'chirish
     await db.query('DELETE FROM files WHERE id = $1', [fileId]);
     
-    console.log('Fayl database\'dan o\'chirildi');
+    console.log('✅ Fayl muvaffaqiyatli o\'chirildi!');
     
     res.json({
       success: true,
