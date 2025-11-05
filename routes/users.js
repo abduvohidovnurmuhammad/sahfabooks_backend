@@ -162,7 +162,6 @@ router.get('/stats/summary', authenticateToken, isAdmin, async (req, res) => {
   }
 });
 // PUT /api/users/change-password - Client o'z parolini o'zgartiradi
-// PUT /api/users/change-password - Client o'z parolini o'zgartiradi
 router.put('/change-password', authenticateToken, async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
