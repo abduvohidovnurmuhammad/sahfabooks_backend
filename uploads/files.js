@@ -164,7 +164,7 @@ router.post('/', authenticateToken, isAdmin, uploadClientFiles, async (req, res)
 });
 
 // POST /api/files/client-upload - Mijoz ikkita fayl yuklash (YANGI!)
-router.post('/client-upload', authenticateToken, upload.uploadClientFiles, async (req, res) => {
+router.post('/client-upload', authenticateToken, uploadSingle, async (req, res) => {
   try {
     console.log('=== CLIENT DUAL FILE UPLOAD ===');
     console.log('User:', req.user.username, 'Role:', req.user.role);
