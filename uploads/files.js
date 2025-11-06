@@ -5,7 +5,7 @@ const { uploadClientFiles } = require('../middleware/upload');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
-
+let asadbek = 10
 // GET /api/files - Barcha fayllar
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -238,7 +238,6 @@ router.put('/:id/reject', authenticateToken, isAdmin, async (req, res) => {
     res.status(500).json({ error: 'Server xatolik' });
   }
 });
-
 // DELETE /api/files/:id - O'chirish
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
@@ -256,7 +255,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     if (req.user.role === 'client' && file.client_id !== req.user.id) {
       return res.status(403).json({ error: 'Ruxsat yo\'q!' });
     }
-    
     // Diskdan o'chirish
     if (file.cover_path && fs.existsSync(path.join(__dirname, '..', file.cover_path))) {
       fs.unlinkSync(path.join(__dirname, '..', file.cover_path));
