@@ -27,6 +27,54 @@ router.get('/', authenticateToken, isAdmin, async (req, res) => {
   }
 });
 
+// ✅ PUT /api/users/change-password - Client o'z parolini o'zgartiradi
+// MUHIM: /:id dan OLDIN bo'lishi kerak!
+router.put('/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.user.id;
+    
+    console.log('=== PAROL O\'ZGARTIRISH ===');
+    console.log('User ID:', userId);
+    console.log('Username:', req.user.username);
+    
+    // Eski parolni tekshirish
+    const result = await db.query('SELECT password FROM users WHERE id = $1', [userId]);
+    
+    if (result.rows.length === 0) {
+      console.log('❌ User topilmadi!');
+      return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+    }
+    
+    const user = result.rows[0];
+    const validPassword = await bcrypt.compare(oldPassword, user.password);
+    
+    if (!validPassword) {
+      console.log('❌ Eski parol noto\'g\'ri!');
+      return res.status(401).json({ error: 'Eski parol noto\'g\'ri!' });
+    }
+    
+    console.log('✅ Eski parol to\'g\'ri, yangilanmoqda...');
+    
+    // Yangi parolni hash qilish
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Database'ni yangilash
+    await db.query(
+      'UPDATE users SET password = $1 WHERE id = $2',
+      [hashedPassword, userId]
+    );
+    
+    console.log('✅ Parol muvaffaqiyatli yangilandi!');
+    
+    res.json({ success: true, message: 'Parol muvaffaqiyatli o\'zgartirildi!' });
+    
+  } catch (err) {
+    console.error('Change password xatolik:', err);
+    res.status(500).json({ error: 'Server xatolik' });
+  }
+});
+
 // GET /api/users/:id - Bitta foydalanuvchi
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
@@ -158,50 +206,6 @@ router.get('/stats/summary', authenticateToken, isAdmin, async (req, res) => {
 
   } catch (err) {
     console.error('Stats xatolik:', err);
-    res.status(500).json({ error: 'Server xatolik' });
-  }
-});
-// PUT /api/users/change-password - Client o'z parolini o'zgartiradi
-router.put('/change-password', authenticateToken, async (req, res) => {
-  try {
-    const { oldPassword, newPassword } = req.body;
-    const userId = req.user.id;
-    
-    console.log('=== PAROL O\'ZGARTIRISH ===');
-    console.log('User ID:', userId);
-    
-    // Eski parolni tekshirish
-    const result = await db.query('SELECT password FROM users WHERE id = $1', [userId]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
-    }
-    
-    const user = result.rows[0];
-    const validPassword = await bcrypt.compare(oldPassword, user.password);
-    
-    if (!validPassword) {
-      console.log('❌ Eski parol noto\'g\'ri!');
-      return res.status(401).json({ error: 'Eski parol noto\'g\'ri!' });
-    }
-    
-    console.log('✅ Eski parol to\'g\'ri, yangilanmoqda...');
-    
-    // Yangi parolni hash qilish
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
-    // Database'ni yangilash
-    await db.query(
-      'UPDATE users SET password = $1 WHERE id = $2',
-      [hashedPassword, userId]
-    );
-    
-    console.log('✅ Parol muvaffaqiyatli yangilandi!');
-    
-    res.json({ success: true, message: 'Parol muvaffaqiyatli o\'zgartirildi!' });
-    
-  } catch (err) {
-    console.error('Change password xatolik:', err);
     res.status(500).json({ error: 'Server xatolik' });
   }
 });
