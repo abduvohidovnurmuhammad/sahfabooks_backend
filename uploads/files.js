@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../database');
 const { authenticateToken, isAdmin } = require('../middleware/auth');
-const { uploadClientFiles, uploadSingle } = require('../middleware/upload')
+const { uploadClientFiles, uploadSingle } = require('../middleware/upload');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
