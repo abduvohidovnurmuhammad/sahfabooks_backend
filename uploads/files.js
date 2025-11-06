@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../database');
 const { authenticateToken, isAdmin } = require('../middleware/auth');
-const upload = require('../middleware/upload');
+const { uploadClientFiles, uploadSingle } = require('../middleware/upload');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
@@ -73,10 +73,11 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/files - Yangi fayl yaratish (Faqat admin - eski usul)
-router.post('/', authenticateToken, isAdmin, upload.uploadSingle, async (req, res) => {
+// POST /api/files - Admin yangi fayl qo'shadi (2 ta fayl bilan)
+router.post('/', authenticateToken, isAdmin, uploadClientFiles, async (req, res) => {
   try {
-    console.log('=== YANGI FAYL YARATISH (ADMIN) ===');
+    console.log('=== YANGI FAYL YARATISH (ADMIN) - DUAL FILES ===');
+    console.log('req.files:', req.files);
     
     const {
       client_id,
@@ -96,14 +97,25 @@ router.post('/', authenticateToken, isAdmin, upload.uploadSingle, async (req, re
       return res.status(400).json({ error: 'Sarlavha va mijoz majburiy!' });
     }
 
-    const file_path = req.file ? req.file.path : null;
+    // ✅ 2 ta faylni olish
+    if (!req.files || !req.files.cover_file || !req.files.content_file) {
+      return res.status(400).json({ error: 'Ikkala fayl ham majburiy! (Muqova va Ichki)' });
+    }
 
+    const cover_path = req.files.cover_file[0].path;
+    const content_path = req.files.content_file[0].path;
+
+    console.log('Muqova fayl:', cover_path);
+    console.log('Ichki fayl:', content_path);
+
+    // ✅ Database'ga 2 ta path saqlash
     const result = await db.query(
       `INSERT INTO files (
         client_id,
         title,
         description,
-        file_path,
+        cover_path,
+        content_path,
         cash_price,
         bank_price,
         show_price,
@@ -115,13 +127,14 @@ router.post('/', authenticateToken, isAdmin, upload.uploadSingle, async (req, re
         admin_notes,
         status
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *`,
       [
         client_id,
         title,
         description,
-        file_path,
+        cover_path,     // ← YANGI
+        content_path,   // ← YANGI
         cash_price || 0,
         bank_price || 0,
         show_price || false,
@@ -135,7 +148,9 @@ router.post('/', authenticateToken, isAdmin, upload.uploadSingle, async (req, re
       ]
     );
 
-    console.log('Admin fayl yaratildi:', result.rows[0].id);
+    console.log('✅ Admin fayl yaratildi:', result.rows[0].id);
+    console.log('Muqova:', cover_path);
+    console.log('Ichki:', content_path);
 
     res.status(201).json({
       success: true,
