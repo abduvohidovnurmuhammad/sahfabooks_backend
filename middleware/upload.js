@@ -12,7 +12,7 @@ if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 if (!fs.existsSync(coversDir)) fs.mkdirSync(coversDir);
 if (!fs.existsSync(contentsDir)) fs.mkdirSync(contentsDir);
 
-// Storage sozlamalari - Har bir fayl turi uchun alohida
+// Storage sozlamalari
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     if (file.fieldname === 'cover_file') {
@@ -30,29 +30,30 @@ const storage = multer.diskStorage({
   }
 });
 
-// Fayl filtrini olib tashladik — istalgan fayl yuklanadi
+// Fayl filtri
 const fileFilter = (req, file, cb) => {
   if (!file.originalname) {
     return cb(new Error('Fayl tanlanmadi!'));
   }
-  cb(null, true); // cheklov yo‘q
+  cb(null, true);
 };
 
 // Multer sozlamalari
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB max
+  limits: { fileSize: 500 * 1024 * 1024 },
   fileFilter: fileFilter
 });
 
-// Eksport - Turli variantlar
-module.exports = upload;
-
-// Ikkita faylni yuklash uchun
-module.exports.uploadClientFiles = upload.fields([
+// ✅ TO'G'RI EXPORT
+const uploadClientFiles = upload.fields([
   { name: 'cover_file', maxCount: 1 },
   { name: 'content_file', maxCount: 1 }
 ]);
 
-// Bitta fayl uchun (eski funksionallik)
-module.exports.uploadSingle = upload.single('file');
+const uploadSingle = upload.single('file');
+
+module.exports = {
+  uploadClientFiles,
+  uploadSingle
+};
